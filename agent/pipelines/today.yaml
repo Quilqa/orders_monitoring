@@ -27,6 +27,10 @@ validation:
   min_rows: 0                         # утром заказов может ещё не быть — пустой снапшот валиден
   max_rows: 50000
 
+# Сохранять исходные таблицы (customer_orders, cust_order_day_detail, crm_customer)
+# в data/today/sources/ — доступны в SQL-вкладке браузера.
+export_sources: true
+
 # Каждый час.
 schedule:
   mode: interval

@@ -36,8 +36,8 @@ def _read_query(cfg: Config, query_file: str) -> str:
     return (cfg.queries_dir / query_file).read_text(encoding="utf-8")
 
 
-def collect(cfg: Config) -> pd.DataFrame:
-    """Выполнить все источники и объединить согласно pipeline.combine."""
+def collect(cfg: Config) -> tuple[pd.DataFrame, dict[str, pd.DataFrame]]:
+    """Выполнить источники и объединить. Возвращает (итоговый df, {имя_источника: df})."""
     combine = cfg.pipeline.combine
     if combine == "union_all":
         return _collect_union(cfg)
@@ -60,15 +60,18 @@ def _run_source(cfg: Config, src, sql: str) -> pd.DataFrame:
     raise ValidationError(f"Неизвестный тип источника: {src.type}")
 
 
-def _collect_union(cfg: Config) -> pd.DataFrame:
+def _collect_union(cfg: Config) -> tuple[pd.DataFrame, dict[str, pd.DataFrame]]:
     frames = []
+    tables = {}
     for src in cfg.pipeline.sources:
         sql = _read_query(cfg, src.query_file)
         log.info("Источник '%s' (%s): выполняю %s", src.name, src.type, src.query_file)
-        frames.append(_run_source(cfg, src, sql))
+        df = _run_source(cfg, src, sql)
+        frames.append(df)
+        tables[src.name] = df
     if not frames:
         raise ValidationError("Нет источников в pipeline.yaml")
-    return pd.concat(frames, ignore_index=True)
+    return pd.concat(frames, ignore_index=True), tables
 
 
 # --- combine: duckdb_join (межбазовая сборка) ---
@@ -112,7 +115,7 @@ def _substitute(sql: str, driver_df: pd.DataFrame) -> str:
     return re.sub(r"\{\{(\w+)__(ids|min|max)\}\}", repl, sql)
 
 
-def _collect_duckdb_join(cfg: Config) -> pd.DataFrame:
+def _collect_duckdb_join(cfg: Config) -> tuple[pd.DataFrame, dict[str, pd.DataFrame]]:
     import duckdb
 
     if not cfg.pipeline.driver or not cfg.pipeline.assemble_file:
@@ -151,7 +154,7 @@ def _collect_duckdb_join(cfg: Config) -> pd.DataFrame:
     finally:
         con.close()
     log.info("Сборка: %d строк, %d колонок", len(result), result.shape[1])
-    return result
+    return result, tables
 
 
 def validate(cfg: Config, df: pd.DataFrame) -> None:
@@ -206,13 +209,17 @@ def run(pipeline: str = "historical", sample: bool = False, publish: bool = Fals
     data_dir = cfg.data_dir
     log.info("Пайплайн '%s' -> %s", pipeline, data_dir)
     try:
-        df = make_sample() if sample else collect(cfg)
+        if sample:
+            df, sources = make_sample(), {}
+        else:
+            df, sources = collect(cfg)
         df = normalize(df)
         validate(cfg, df)
         meta = write_snapshot(
             df, data_dir,
             source_versions={"pipeline": pipeline, "impala": cfg.impala.database,
                              "mode": "sample" if sample else "live"},
+            source_tables=(sources if cfg.pipeline.export_sources else None),
         )
         log.info("Готово ['%s']: %d строк -> %s", pipeline, meta["row_count"], data_dir)
         if publish or cfg.pipeline.publish.get("mode", "none") != "none":

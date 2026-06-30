@@ -78,6 +78,7 @@ class Pipeline:
     driver: str | None = None        # имя источника-драйвера для combine: duckdb_join
     assemble_file: str | None = None  # DuckDB-SQL сборки для combine: duckdb_join
     publish: dict = field(default_factory=dict)  # {mode: none|git, git_branch, git_remote}
+    export_sources: bool = False     # сохранять исходные таблицы в data/<subdir>/sources/
 
 
 @dataclass
@@ -153,6 +154,7 @@ def load_config(pipeline: str = "historical") -> Config:
         driver=raw.get("driver"),
         assemble_file=raw.get("assemble_file"),
         publish=raw.get("publish", {}),
+        export_sources=raw.get("export_sources", False),
     )
 
     return Config(impala=impala, postgres=postgres, pipeline=pipeline_obj,

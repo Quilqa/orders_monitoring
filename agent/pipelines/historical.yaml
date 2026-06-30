@@ -30,6 +30,10 @@ validation:
   min_rows: 1
   max_rows: 50000
 
+# Сохранять исходные таблицы (customer_orders, cust_order_full, crm_cust_order_ids,
+# crm_customer) в data/historical/sources/ — доступны в SQL-вкладке браузера.
+export_sources: true
+
 # Раз в сутки, 05:00 по Алматы.
 schedule:
   mode: cron

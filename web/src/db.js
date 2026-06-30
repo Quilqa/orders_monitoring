@@ -20,15 +20,47 @@ export async function initDuckDB() {
   return _conn;
 }
 
-// Зарегистрировать snapshot.parquet и создать представление `data`.
-export async function loadSnapshot(url) {
-  const conn = await initDuckDB();
+let _files = new Set(); // зарегистрированные виртуальные файлы
+let _views = new Set(); // созданные представления
+
+async function registerParquet(conn, url, vname, table) {
   const resp = await fetch(url, { cache: "no-store" });
-  if (!resp.ok) throw new Error(`Не удалось загрузить снапшот: ${resp.status}`);
+  if (!resp.ok) throw new Error(`Не удалось загрузить ${url}: ${resp.status}`);
   const buf = new Uint8Array(await resp.arrayBuffer());
-  await _db.registerFileBuffer("snapshot.parquet", buf);
-  await conn.query(`CREATE OR REPLACE VIEW data AS SELECT * FROM parquet_scan('snapshot.parquet')`);
+  await _db.registerFileBuffer(vname, buf);
+  _files.add(vname);
+  await conn.query(`CREATE OR REPLACE VIEW "${table}" AS SELECT * FROM parquet_scan('${vname}')`);
+  _views.add(table);
+}
+
+// Загрузить снапшот (таблица `data`) + исходные таблицы из meta.source_tables.
+// baseDir — каталог датасета (напр. ../data/today). Безопасно при смене датасета.
+export async function loadSnapshot(baseDir, meta) {
+  const conn = await initDuckDB();
+  // очистить регистрацию предыдущего датасета
+  for (const v of _views) { try { await conn.query(`DROP VIEW IF EXISTS "${v}"`); } catch (_) {} }
+  for (const f of _files) { try { await _db.dropFile(f); } catch (_) {} }
+  _views.clear();
+  _files.clear();
+
+  await registerParquet(conn, `${baseDir}/snapshot.parquet`, "snapshot.parquet", "data");
+  for (const name of (meta && meta.source_tables) || []) {
+    try {
+      await registerParquet(conn, `${baseDir}/sources/${name}.parquet`, `src_${name}.parquet`, name);
+    } catch (e) {
+      console.warn("Источник не загружен:", name, e.message);
+    }
+  }
   return conn;
+}
+
+// Список доступных таблиц (для подсказки в SQL).
+export async function listTables() {
+  const conn = await initDuckDB();
+  const r = await conn.query(
+    `SELECT table_name FROM information_schema.tables ORDER BY table_name`
+  );
+  return r.toArray().map((row) => row.table_name);
 }
 
 // Выполнить SQL, вернуть { columns: string[], rows: any[][] }.

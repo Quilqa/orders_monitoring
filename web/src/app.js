@@ -82,7 +82,7 @@ async function loadDataset() {
   try {
     META = await fetchMeta(dataUrl("meta.json"));
     if (META.status === "ok" || META.status === "stale") {
-      await loadSnapshot(dataUrl("snapshot.parquet"));
+      await loadSnapshot(currentDir(), META);
     }
     if (!dashboardConfig) {
       dashboardConfig = await (await fetch("dashboard.json", { cache: "no-store" })).json();
@@ -102,7 +102,7 @@ async function loadDataset() {
 
   stopReload = startAutoReload(dataUrl("meta.json"), META.generated_at, async (meta) => {
     META = meta;
-    await loadSnapshot(dataUrl("snapshot.parquet"));
+    await loadSnapshot(currentDir(), meta);
     inited.dashboard = inited.detail = inited.sql = false;
     renderFreshness();
     await showView(activeView());

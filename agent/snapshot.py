@@ -21,8 +21,13 @@ def _atomic_replace(tmp: Path, dst: Path) -> None:
 
 def write_snapshot(df: pd.DataFrame, data_dir: Path, *,
                    status: str = "ok", error: str | None = None,
-                   source_versions: dict | None = None) -> dict:
-    """Записать parquet + meta.json атомарно. Возвращает meta-словарь."""
+                   source_versions: dict | None = None,
+                   source_tables: dict | None = None) -> dict:
+    """Записать parquet + meta.json атомарно. Возвращает meta-словарь.
+
+    source_tables: {имя: DataFrame} — исходные таблицы; сохраняются в
+    data_dir/sources/<имя>.parquet и перечисляются в meta для загрузки в браузере.
+    """
     data_dir.mkdir(parents=True, exist_ok=True)
 
     parquet_path = data_dir / "snapshot.parquet"
@@ -33,11 +38,27 @@ def write_snapshot(df: pd.DataFrame, data_dir: Path, *,
         df.to_parquet(tmp_parquet, index=False, engine="pyarrow", compression="zstd")
         _atomic_replace(tmp_parquet, parquet_path)
 
+    written_sources = []
+    if status == "ok" and source_tables:
+        src_dir = data_dir / "sources"
+        src_dir.mkdir(parents=True, exist_ok=True)
+        for name, sdf in source_tables.items():
+            try:
+                dst = src_dir / f"{name}.parquet"
+                tmp = dst.with_suffix(".parquet.tmp")
+                sdf.to_parquet(tmp, index=False, engine="pyarrow", compression="zstd")
+                _atomic_replace(tmp, dst)
+                written_sources.append({"name": name, "row_count": int(len(sdf))})
+            except Exception as e:  # noqa: BLE001
+                log.warning("Источник '%s' не сохранён в parquet: %s", name, e)
+
     meta = {
         "generated_at": datetime.now(_TZ).isoformat(),
         "row_count": int(len(df)),
         "columns": [{"name": c, "type": str(df[c].dtype)} for c in df.columns],
         "source_versions": source_versions or {},
+        "source_tables": [s["name"] for s in written_sources],
+        "source_tables_info": written_sources,
         "status": status,
     }
     if error:

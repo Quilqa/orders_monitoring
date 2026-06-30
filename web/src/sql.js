@@ -1,8 +1,9 @@
-// Лист «SQL»: ad-hoc запросы по снапшоту (DuckDB-WASM). Таблица доступна как `data`.
-import { query } from "./db.js";
+// Лист «SQL»: ad-hoc запросы по снапшоту (DuckDB-WASM). Итог доступен как `data`,
+// плюс исходные таблицы Impala/Postgre (из data/<пайплайн>/sources/).
+import { query, listTables } from "./db.js";
 import { renderTable, exportCSV, isNumericCol, asNumber } from "./util.js";
 
-const DEFAULT_SQL = "SELECT platform, sum(cnt) AS events\nFROM data\nGROUP BY 1\nORDER BY events DESC";
+const DEFAULT_SQL = "SELECT status, count(*) AS orders\nFROM data\nGROUP BY 1\nORDER BY orders DESC";
 
 let lastResult = null;
 let chart = null;
@@ -10,13 +11,13 @@ let chart = null;
 export function initSql(el) {
   el.innerHTML = `
     <div class="panel">
-      <h3>SQL по снапшоту — таблица доступна как <code>data</code></h3>
+      <h3>SQL по снапшоту — итог доступен как <code>data</code></h3>
       <textarea class="sql-editor" id="sql-input" spellcheck="false">${DEFAULT_SQL}</textarea>
       <div class="sql-bar">
         <button class="btn primary" id="sql-run">▶ Выполнить (Ctrl+Enter)</button>
         <button class="btn" id="sql-chart" disabled>📊 Быстрый график</button>
         <button class="btn" id="sql-csv" disabled>Экспорт CSV</button>
-        <span class="sql-hint">Только SELECT. Данные локальны в браузере.</span>
+        <span class="sql-hint" id="sql-tables">Только SELECT. Данные локальны в браузере.</span>
       </div>
       <div id="sql-output"></div>
     </div>`;
@@ -30,6 +31,15 @@ export function initSql(el) {
   input.addEventListener("keydown", (e) => {
     if ((e.ctrlKey || e.metaKey) && e.key === "Enter") { e.preventDefault(); run(el); }
   });
+  showTables(el);
+}
+
+async function showTables(el) {
+  try {
+    const tables = await listTables();
+    const h = el.querySelector("#sql-tables");
+    if (h && tables.length) h.innerHTML = `Таблицы: ${tables.map((t) => `<code>${t}</code>`).join(", ")}. Только SELECT.`;
+  } catch (_) {}
 }
 
 async function run(el) {
