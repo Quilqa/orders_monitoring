@@ -14,10 +14,9 @@ venv/
 .venv/
 env/
 
-# Временные файлы снапшота
-data/**/*.tmp
-data/**/*.parquet.tmp
-data/**/*.json.tmp
+# Снапшоты НЕ хранятся в main (живут в ветке gh-pages, см. publish.mode: git_orphan_pages).
+# Агент force-добавляет data/ только в gh-pages.
+/data/
 
 # OS / IDE
 .DS_Store

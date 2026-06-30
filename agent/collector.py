@@ -269,7 +269,8 @@ def _publish_orphan_pages(cfg: Config) -> None:
     env = dict(os.environ, GIT_INDEX_FILE=index_file)
     try:
         _git(["read-tree", "--empty"], env=env)
-        _git(["add", "--", "web", "data"], env=env)        # сайт = только web/ и data/
+        # -f: data/ исключён из основного .gitignore, но в site он нужен
+        _git(["add", "-f", "--", "web", "data"], env=env)  # сайт = только web/ и data/
         code, tree = _git(["write-tree"], env=env)
         if code != 0 or not tree:
             log.error("Публикация ['%s']: write-tree не удался", cfg.pipeline.name)
