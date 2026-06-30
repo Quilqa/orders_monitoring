@@ -40,6 +40,6 @@ retries:
   backoff_seconds: 60
 
 publish:
-  mode: git                 # после сборки: git commit+push -> Pages пересоберётся
+  mode: git_orphan_pages    # сайт -> ветка gh-pages 1 orphan-коммитом (история не растёт)
   git_remote: origin
-  git_branch: main
+  git_branch: gh-pages
