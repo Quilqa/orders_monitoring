@@ -50,9 +50,22 @@ def main() -> None:
     p = argparse.ArgumentParser(description="Генерация DEK и паролей доступа (шифрование снапшота)")
     p.add_argument("--admin-pass", default="admin123")
     p.add_argument("--viewer-pass", default="viewer123")
+    p.add_argument("--keep-key", action="store_true",
+                   help="оставить существующий DATA_KEY из .env (сменить только пароли, "
+                        "без пересборки снапшотов)")
     args = p.parse_args()
 
-    dek = AESGCM.generate_key(bit_length=256)        # 32 байта
+    dek = None
+    if args.keep_key:
+        from dotenv import load_dotenv
+        load_dotenv(ENV_FILE)
+        if os.environ.get("DATA_KEY"):
+            dek = base64.b64decode(os.environ["DATA_KEY"])
+            print("Использую существующий DATA_KEY (пересборка не нужна).")
+        else:
+            print("DATA_KEY не найден в .env — генерирую новый.")
+    if dek is None:
+        dek = AESGCM.generate_key(bit_length=256)    # 32 байта
     salt = secrets.token_bytes(16)
 
     roles = [
