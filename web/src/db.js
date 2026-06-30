@@ -71,6 +71,21 @@ export async function listTables() {
   return r.toArray().map((row) => row.table_name);
 }
 
+// Схема всех таблиц: { table_name: [{ name, type }, ...] }.
+export async function getSchema() {
+  const conn = await initDuckDB();
+  const r = await conn.query(
+    `SELECT table_name, column_name, data_type
+     FROM information_schema.columns
+     ORDER BY table_name, ordinal_position`
+  );
+  const schema = {};
+  for (const row of r.toArray()) {
+    (schema[row.table_name] ||= []).push({ name: row.column_name, type: row.data_type });
+  }
+  return schema;
+}
+
 // Выполнить SQL, вернуть { columns: string[], rows: any[][] }.
 export async function query(sql) {
   const conn = await initDuckDB();

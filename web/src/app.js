@@ -5,6 +5,8 @@ import { fetchMeta, formatGeneratedAt, startAutoReload } from "./meta.js";
 import { initDashboard } from "./dashboard.js";
 import { initDetail } from "./detail.js";
 import { initSql } from "./sql.js";
+import { getCustomViews, getCustomView, deleteCustomView, renderCustomView } from "./custom.js";
+import { escapeHtml } from "./util.js";
 
 let CONFIG = null;
 let META = null;
@@ -12,6 +14,8 @@ let dashboardConfig = null;
 let currentDatasetId = null;
 let stopReload = null;
 let currentDEK = null; // ключ расшифровки, полученный при входе
+let activeCustomId = null; // id открытого кастомного листа
+let sqlPreset = null; // запрос для правки, передаётся в SQL-вкладку
 const inited = { dashboard: false, detail: false, sql: false };
 
 function isEncrypted() {
@@ -70,6 +74,8 @@ async function enterApp(role) {
   setupTabs();
   setupLogout();
   setupDatasetSelect();
+  setupCustomEvents();
+  renderCustomTabs();
 
   const list = datasetList();
   currentDatasetId =
@@ -104,7 +110,7 @@ async function loadDataset() {
 
   inited.dashboard = inited.detail = inited.sql = false;
   renderFreshness();
-  await showView(activeView());
+  await showView(activeView(), activeCustomId);
   hideBoot();
 
   stopReload = startAutoReload(dataUrl("meta.json"), META.generated_at, async (meta) => {
@@ -112,7 +118,7 @@ async function loadDataset() {
     await loadSnapshot(currentDir(), meta);
     inited.dashboard = inited.detail = inited.sql = false;
     renderFreshness();
-    await showView(activeView());
+    await showView(activeView(), activeCustomId);
   });
 }
 
@@ -145,26 +151,79 @@ function setupDatasetSelect() {
   });
 }
 
+// Делегированный клик по навигации (включая динамические кастомные вкладки).
 function setupTabs() {
-  document.querySelectorAll(".tab").forEach((tab) => {
-    tab.addEventListener("click", async () => {
-      document.querySelectorAll(".tab").forEach((t) => t.classList.remove("active"));
-      tab.classList.add("active");
-      await showView(tab.dataset.view);
-    });
+  document.querySelector(".tabs").addEventListener("click", async (e) => {
+    const close = e.target.closest(".tab-close");
+    if (close) {
+      e.stopPropagation();
+      deleteCustomView(close.dataset.id);
+      return;
+    }
+    const tab = e.target.closest(".tab");
+    if (!tab) return;
+    await activateTab(tab.dataset.view, tab.dataset.id || null);
   });
 }
 
-async function showView(view) {
-  for (const v of ["dashboard", "detail", "sql"]) {
+async function activateTab(view, customId) {
+  document.querySelectorAll(".tab").forEach((t) => t.classList.remove("active"));
+  const sel = customId
+    ? document.querySelector(`.tab[data-id="${customId}"]`)
+    : document.querySelector(`.tab[data-view="${view}"]:not([data-id])`);
+  if (sel) sel.classList.add("active");
+  activeCustomId = view === "custom" ? customId : null;
+  await showView(view, customId);
+}
+
+// Динамические вкладки кастомных детализаций — после статических.
+function renderCustomTabs() {
+  const nav = document.querySelector(".tabs");
+  nav.querySelectorAll(".tab[data-view='custom']").forEach((t) => t.remove());
+  for (const v of getCustomViews()) {
+    const b = document.createElement("button");
+    b.className = "tab tab-custom";
+    b.dataset.view = "custom";
+    b.dataset.id = v.id;
+    b.innerHTML = `<span>${escapeHtml(v.name)}</span><span class="tab-close" data-id="${v.id}" title="Удалить">×</span>`;
+    nav.appendChild(b);
+  }
+}
+
+async function showView(view, customId) {
+  for (const v of ["dashboard", "detail", "sql", "custom"]) {
     document.getElementById(`view-${v}`).hidden = v !== view;
   }
   const el = document.getElementById(`view-${view}`);
+  if (view === "custom") {
+    const v = getCustomView(customId);
+    el.innerHTML = "";
+    if (v) await renderCustomView(el, v);
+    return;
+  }
   if (inited[view]) return;
   if (view === "dashboard") await initDashboard(el, dashboardConfig);
   else if (view === "detail") await initDetail(el);
-  else if (view === "sql") initSql(el);
+  else if (view === "sql") { initSql(el, sqlPreset); sqlPreset = null; }
   inited[view] = true;
+}
+
+// События от SQL-вкладки и кастомных листов.
+function setupCustomEvents() {
+  document.addEventListener("customviewschanged", () => {
+    renderCustomTabs();
+    // если открытый кастомный лист удалён — вернуться на SQL
+    if (activeCustomId && !getCustomView(activeCustomId)) activateTab("sql");
+  });
+  document.addEventListener("opencustomview", (e) => {
+    renderCustomTabs();
+    activateTab("custom", e.detail);
+  });
+  document.addEventListener("editcustomsql", (e) => {
+    sqlPreset = e.detail.sql;
+    inited.sql = false; // переинициализировать SQL с этим запросом
+    activateTab("sql");
+  });
 }
 
 function setupLogout() {

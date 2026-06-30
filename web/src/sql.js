@@ -1,25 +1,35 @@
 // Лист «SQL»: ad-hoc запросы по снапшоту (DuckDB-WASM). Итог доступен как `data`,
 // плюс исходные таблицы Impala/Postgre (из data/<пайплайн>/sources/).
-import { query, listTables } from "./db.js";
-import { renderTable, exportCSV, isNumericCol, asNumber } from "./util.js";
+// Слева — браузер схемы (все таблицы и колонки). Запрос можно сохранить
+// как кастомную детализацию (отдельный лист).
+import { query, getSchema } from "./db.js";
+import { renderTable, exportCSV, escapeHtml, isNumericCol, asNumber } from "./util.js";
+import { addCustomView } from "./custom.js";
 
 const DEFAULT_SQL = "SELECT status, count(*) AS orders\nFROM data\nGROUP BY 1\nORDER BY orders DESC";
 
 let lastResult = null;
 let chart = null;
 
-export function initSql(el) {
+export function initSql(el, presetSql) {
   el.innerHTML = `
-    <div class="panel">
-      <h3>SQL по снапшоту — итог доступен как <code>data</code></h3>
-      <textarea class="sql-editor" id="sql-input" spellcheck="false">${DEFAULT_SQL}</textarea>
-      <div class="sql-bar">
-        <button class="btn primary" id="sql-run">▶ Выполнить (Ctrl+Enter)</button>
-        <button class="btn" id="sql-chart" disabled>📊 Быстрый график</button>
-        <button class="btn" id="sql-csv" disabled>Экспорт CSV</button>
-        <span class="sql-hint" id="sql-tables">Только SELECT. Данные локальны в браузере.</span>
+    <div class="sql-layout">
+      <aside class="sql-schema panel">
+        <h3>Таблицы</h3>
+        <div id="sql-schema-list"><div class="empty">Загрузка схемы…</div></div>
+      </aside>
+      <div class="sql-main panel">
+        <h3>SQL по снапшоту — итог доступен как <code>data</code></h3>
+        <textarea class="sql-editor" id="sql-input" spellcheck="false">${escapeHtml(presetSql || DEFAULT_SQL)}</textarea>
+        <div class="sql-bar">
+          <button class="btn primary" id="sql-run">▶ Выполнить (Ctrl+Enter)</button>
+          <button class="btn" id="sql-chart" disabled>📊 Быстрый график</button>
+          <button class="btn" id="sql-csv" disabled>Экспорт CSV</button>
+          <button class="btn" id="sql-save">💾 Сохранить как детализацию</button>
+          <span class="sql-hint">Только SELECT. Данные локальны в браузере.</span>
+        </div>
+        <div id="sql-output"></div>
       </div>
-      <div id="sql-output"></div>
     </div>`;
 
   const input = el.querySelector("#sql-input");
@@ -28,18 +38,80 @@ export function initSql(el) {
   el.querySelector("#sql-csv").addEventListener("click", () => {
     if (lastResult) exportCSV(lastResult.columns, lastResult.rows, "sql_result.csv");
   });
+  el.querySelector("#sql-save").addEventListener("click", () => saveAsDetail(el));
   input.addEventListener("keydown", (e) => {
     if ((e.ctrlKey || e.metaKey) && e.key === "Enter") { e.preventDefault(); run(el); }
   });
-  showTables(el);
+  buildSchema(el);
 }
 
-async function showTables(el) {
+async function buildSchema(el) {
+  const box = el.querySelector("#sql-schema-list");
   try {
-    const tables = await listTables();
-    const h = el.querySelector("#sql-tables");
-    if (h && tables.length) h.innerHTML = `Таблицы: ${tables.map((t) => `<code>${t}</code>`).join(", ")}. Только SELECT.`;
-  } catch (_) {}
+    const schema = await getSchema();
+    const names = Object.keys(schema);
+    if (!names.length) { box.innerHTML = `<div class="empty">Нет таблиц</div>`; return; }
+    box.innerHTML = names.map((t) => `
+      <div class="schema-table">
+        <div class="schema-th" data-table="${escapeHtml(t)}">
+          <span class="schema-caret">▸</span>
+          <span class="schema-name">${escapeHtml(t)}</span>
+          <span class="schema-cnt">${schema[t].length}</span>
+        </div>
+        <ul class="schema-cols" hidden>
+          ${schema[t].map((c) => `<li data-col="${escapeHtml(c.name)}"><span>${escapeHtml(c.name)}</span><em>${escapeHtml(c.type)}</em></li>`).join("")}
+        </ul>
+      </div>`).join("");
+
+    box.querySelectorAll(".schema-th").forEach((th) => {
+      th.addEventListener("click", (e) => {
+        const block = th.parentElement;
+        const ul = block.querySelector(".schema-cols");
+        // клик по имени таблицы (двойной/с Shift) — вставить SELECT; одиночный — раскрыть
+        if (e.shiftKey) { fillSelect(el, th.dataset.table); return; }
+        ul.hidden = !ul.hidden;
+        th.querySelector(".schema-caret").textContent = ul.hidden ? "▸" : "▾";
+      });
+      th.querySelector(".schema-name").addEventListener("dblclick", (e) => {
+        e.stopPropagation();
+        fillSelect(el, th.dataset.table);
+      });
+    });
+    box.querySelectorAll(".schema-cols li").forEach((li) => {
+      li.addEventListener("click", () => insertAtCursor(el, li.dataset.col));
+    });
+  } catch (e) {
+    box.innerHTML = `<div class="sql-error">${escapeHtml(e.message)}</div>`;
+  }
+}
+
+function fillSelect(el, table) {
+  const input = el.querySelector("#sql-input");
+  input.value = `SELECT *\nFROM "${table}"\nLIMIT 100`;
+  input.focus();
+  run(el);
+}
+
+function insertAtCursor(el, text) {
+  const input = el.querySelector("#sql-input");
+  const s = input.selectionStart ?? input.value.length;
+  const e = input.selectionEnd ?? input.value.length;
+  input.value = input.value.slice(0, s) + text + input.value.slice(e);
+  input.focus();
+  input.selectionStart = input.selectionEnd = s + text.length;
+}
+
+function saveAsDetail(el) {
+  const sql = el.querySelector("#sql-input").value.trim().replace(/;+\s*$/, "");
+  if (!sql) return;
+  if (!/^\s*(select|with)\b/i.test(sql)) {
+    alert("Сохранять можно только SELECT / WITH запросы.");
+    return;
+  }
+  const name = prompt("Название детализации:", "Моя детализация");
+  if (!name || !name.trim()) return;
+  const view = addCustomView(name, sql);
+  document.dispatchEvent(new CustomEvent("opencustomview", { detail: view.id }));
 }
 
 async function run(el) {
