@@ -1,0 +1,18 @@
+# Impala (см. Impala_connection.md)
+impyla==0.19.0
+thrift==0.16.0
+thrift-sasl==0.4.3
+pure-sasl>=0.6.2          # вместо sasl — не требует C++ Build Tools на Windows
+
+# Postgre (опционально)
+psycopg[binary]>=3.1
+
+# Данные / снапшот
+pandas>=2.0
+pyarrow>=14.0            # запись parquet
+duckdb>=0.10            # межбазовая сборка join (combine: duckdb_join)
+
+# Конфиг и расписание
+pyyaml>=6.0
+python-dotenv>=1.0       # креды из .env
+apscheduler>=3.10        # планировщик внутри процесса (опционально)

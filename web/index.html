@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Метрики Amplitude</title>
+  <link rel="stylesheet" href="src/styles.css" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+</head>
+<body>
+  <!-- Экран входа -->
+  <div id="login" class="login-screen">
+    <form id="login-form" class="login-card">
+      <h1 id="login-title">Метрики Amplitude</h1>
+      <p class="login-sub">Введите пароль для доступа</p>
+      <input id="login-password" type="password" placeholder="Пароль" autocomplete="current-password" />
+      <button type="submit">Войти</button>
+      <div id="login-error" class="login-error" hidden>Неверный пароль</div>
+    </form>
+  </div>
+
+  <!-- Приложение -->
+  <div id="app" hidden>
+    <header class="topbar">
+      <div class="brand">
+        <span class="brand-title" id="app-title">Метрики Amplitude</span>
+        <span id="role-badge" class="role-badge"></span>
+      </div>
+      <nav class="tabs">
+        <button class="tab active" data-view="dashboard">Дашборд</button>
+        <button class="tab" data-view="detail">Детализация</button>
+        <button class="tab" data-view="sql">SQL</button>
+      </nav>
+      <div class="topbar-right">
+        <select id="dataset-select" class="dataset-select" title="Набор данных"></select>
+        <span id="freshness" class="freshness"></span>
+        <button id="logout" class="link-btn">Выйти</button>
+      </div>
+    </header>
+
+    <div id="stale-banner" class="stale-banner" hidden></div>
+
+    <main id="content">
+      <section id="view-dashboard" class="view"></section>
+      <section id="view-detail" class="view" hidden></section>
+      <section id="view-sql" class="view" hidden></section>
+    </main>
+  </div>
+
+  <div id="boot-overlay" class="boot-overlay" hidden>
+    <div class="spinner"></div>
+    <div id="boot-msg">Загрузка данных…</div>
+  </div>
+
+  <script type="module" src="src/app.js"></script>
+</body>
+</html>

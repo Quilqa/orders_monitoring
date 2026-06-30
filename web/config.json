@@ -1,0 +1,13 @@
+{
+  "title": "Мониторинг заказов",
+  "defaultDataset": "today",
+  "datasets": [
+    { "id": "today", "label": "Сегодня (ежечасно)", "dir": "../data/today" },
+    { "id": "historical", "label": "Исторические (за всё время)", "dir": "../data/historical" }
+  ],
+  "auth": {
+    "_comment": "SHA-256 хэши паролей. Сгенерировать новый: см. README (раздел про смену паролей). По умолчанию admin123 / viewer123.",
+    "adminHash": "240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a9",
+    "viewerHash": "65375049b9e4d7cad6c9ba286fdeb9394b28135a3e84136404cfccfdcc438894"
+  }
+}

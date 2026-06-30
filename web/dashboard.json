@@ -1,0 +1,37 @@
+{
+  "_comment": "Лист 'Дашборд' для снапшота заказов (customer_orders ⋈ drb/crm2). Фильтры применяются ко всем виджетам.",
+  "filters": [
+    { "field": "status", "label": "Статус заказа" },
+    { "field": "sales_channel_name", "label": "Канал продаж" }
+  ],
+  "kpis": [
+    { "label": "Всего заказов", "agg": "count", "field": "id" },
+    { "label": "Уникальных клиентов", "agg": "count_distinct", "field": "customer_id" },
+    { "label": "Пересоздано заказов", "agg": "sum", "field": "recreated_order" },
+    { "label": "Каналов продаж", "agg": "count_distinct", "field": "sales_channel_name" }
+  ],
+  "widgets": [
+    {
+      "type": "line",
+      "title": "Заказы по дням",
+      "x": "entry_date",
+      "y": "id",
+      "agg": "count",
+      "full": true
+    },
+    {
+      "type": "bar",
+      "title": "По статусу заказа",
+      "x": "status",
+      "y": "id",
+      "agg": "count"
+    },
+    {
+      "type": "bar",
+      "title": "По каналам продаж",
+      "x": "sales_channel_name",
+      "y": "id",
+      "agg": "count"
+    }
+  ]
+}

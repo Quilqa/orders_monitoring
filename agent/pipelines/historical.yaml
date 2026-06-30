@@ -1,0 +1,43 @@
+# Пайплайн HISTORICAL — полная история, тяжёлый, раз в сутки (кэшируется).
+# customer_orders (Postgre) JOIN drb.drb_iliyas_cust_order_full + crm2.* (Impala) в DuckDB.
+
+output_subdir: historical             # data/historical/snapshot.parquet + meta.json
+output_dataset: snapshot
+
+combine: duckdb_join
+driver: customer_orders               # источник-драйвер (из него — pushdown-плейсхолдеры)
+assemble_file: assemble_customer_orders.sql
+
+sources:
+  - name: customer_orders             # Postgre — драйвер (все заказы до сегодня)
+    type: postgres
+    query_file: pg_customer_orders.sql
+
+  - name: cust_order_full             # Impala — обогащение из полной истории
+    type: impala
+    query_file: impala_cust_order_full.sql
+
+  - name: crm_cust_order_ids          # Impala — id заведённых в CRM заказов
+    type: impala
+    query_file: impala_crm_cust_order_ids.sql
+
+  - name: crm_customer                # Impala — клиент
+    type: impala
+    query_file: impala_crm_customer.sql
+
+validation:
+  expected_columns: [report_period_id, entry_date, id, customer_id, status, created_at]
+  min_rows: 1
+  max_rows: 50000
+
+# Раз в сутки, 05:00 по Алматы.
+schedule:
+  mode: cron
+  cron: "0 5 * * *"
+
+retries:
+  attempts: 3
+  backoff_seconds: 60
+
+publish:
+  mode: none

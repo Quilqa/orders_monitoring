@@ -1,0 +1,26 @@
+# Секреты — НИКОГДА не коммитить
+agent/.env
+agent/config.yaml
+*.key
+
+# Логи
+agent/logs/
+*.log
+
+# Python
+__pycache__/
+*.py[cod]
+venv/
+.venv/
+env/
+
+# Временные файлы снапшота
+data/**/*.tmp
+data/**/*.parquet.tmp
+data/**/*.json.tmp
+
+# OS / IDE
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

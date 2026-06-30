@@ -1,0 +1,107 @@
+{
+  "generated_at": "2026-06-30T12:17:13.819291+05:00",
+  "row_count": 69,
+  "columns": [
+    {
+      "name": "report_period_id",
+      "type": "int32"
+    },
+    {
+      "name": "entry_date",
+      "type": "string"
+    },
+    {
+      "name": "id",
+      "type": "int64"
+    },
+    {
+      "name": "customer_id",
+      "type": "int64"
+    },
+    {
+      "name": "crm_order_id",
+      "type": "int64"
+    },
+    {
+      "name": "status",
+      "type": "object"
+    },
+    {
+      "name": "created_at",
+      "type": "object"
+    },
+    {
+      "name": "name",
+      "type": "object"
+    },
+    {
+      "name": "identification_number",
+      "type": "object"
+    },
+    {
+      "name": "mobile_phone",
+      "type": "object"
+    },
+    {
+      "name": "type_name",
+      "type": "object"
+    },
+    {
+      "name": "status_name",
+      "type": "object"
+    },
+    {
+      "name": "sales_channel_name",
+      "type": "object"
+    },
+    {
+      "name": "order_date_create",
+      "type": "object"
+    },
+    {
+      "name": "order_close_date",
+      "type": "object"
+    },
+    {
+      "name": "username_created_order",
+      "type": "object"
+    },
+    {
+      "name": "reject_reason_name",
+      "type": "object"
+    },
+    {
+      "name": "new_product_offer_id",
+      "type": "Int64"
+    },
+    {
+      "name": "new_product_offer_name",
+      "type": "object"
+    },
+    {
+      "name": "cust_order_id",
+      "type": "Int64"
+    },
+    {
+      "name": "customer_account_id",
+      "type": "Int64"
+    },
+    {
+      "name": "comments",
+      "type": "object"
+    },
+    {
+      "name": "comment_on_close",
+      "type": "object"
+    },
+    {
+      "name": "recreated_order",
+      "type": "int32"
+    }
+  ],
+  "source_versions": {
+    "impala": "drb",
+    "mode": "live"
+  },
+  "status": "ok"
+}

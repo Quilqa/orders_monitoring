@@ -1,0 +1,40 @@
+# Пайплайн TODAY — только текущий день, лёгкий, ежечасно (live-мониторинг).
+# customer_orders за сегодня (Postgre) JOIN crm2.crm2_crm_cust_order_day + справочники (Impala).
+# Не сканирует всю историю — берёт маленькую day-таблицу и словари.
+
+output_subdir: today                  # data/today/snapshot.parquet + meta.json
+output_dataset: snapshot
+
+combine: duckdb_join
+driver: customer_orders
+assemble_file: assemble_today.sql
+
+sources:
+  - name: customer_orders             # Postgre — заказы только за сегодня
+    type: postgres
+    query_file: today_pg_customer_orders.sql
+
+  - name: cust_order_day_detail       # Impala — day-таблица + справочники (имена)
+    type: impala
+    query_file: today_impala_cust_order_day.sql
+
+  - name: crm_customer                # Impala — клиент (имя/ИИН/телефон)
+    type: impala
+    query_file: impala_crm_customer.sql
+
+validation:
+  expected_columns: [report_period_id, entry_date, id, customer_id, status, created_at]
+  min_rows: 0                         # утром заказов может ещё не быть — пустой снапшот валиден
+  max_rows: 50000
+
+# Каждый час.
+schedule:
+  mode: interval
+  interval_minutes: 60
+
+retries:
+  attempts: 3
+  backoff_seconds: 30
+
+publish:
+  mode: none
