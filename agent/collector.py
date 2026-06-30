@@ -215,7 +215,7 @@ def run(pipeline: str = "historical", sample: bool = False, publish: bool = Fals
                              "mode": "sample" if sample else "live"},
         )
         log.info("Готово ['%s']: %d строк -> %s", pipeline, meta["row_count"], data_dir)
-        if publish:
+        if publish or cfg.pipeline.publish.get("mode") == "git":
             _publish(cfg)
         return 0
     except Exception as e:  # noqa: BLE001
@@ -224,8 +224,58 @@ def run(pipeline: str = "historical", sample: bool = False, publish: bool = Fals
         return 1
 
 
+def _git(args: list[str]) -> tuple[int, str]:
+    import subprocess
+    from config import REPO_DIR
+    p = subprocess.run(["git", "-C", str(REPO_DIR)] + args,
+                       capture_output=True, text=True)
+    return p.returncode, (p.stdout + p.stderr).strip()
+
+
 def _publish(cfg: Config) -> None:
-    log.info("Публикация: режим настраивается в pipeline (publish.mode). MVP: none.")
+    """git add data/<subdir> -> commit (если есть изменения) -> push в origin/main.
+
+    Pages пересобирается автоматически после пуша. Токен берётся из .env
+    (GITHUB_TOKEN) и подставляется в URL пуша — в .git/config не сохраняется.
+    """
+    from config import REPO_DIR
+
+    publish = cfg.pipeline.publish
+    branch = publish.get("git_branch", "main")
+    remote = publish.get("git_remote", "origin")
+    rel = f"data/{cfg.pipeline.output_subdir}"
+
+    _git(["add", rel])
+    # Коммитим, только если есть staged-изменения.
+    if _git(["diff", "--cached", "--quiet"])[0] == 0:
+        log.info("Публикация ['%s']: снапшот не изменился — пуш не нужен", cfg.pipeline.name)
+        return
+
+    code, out = _git(["commit", "-m",
+                      f"data[{cfg.pipeline.output_subdir}]: автообновление снапшота"])
+    if code != 0:
+        log.error("Публикация: commit не удался: %s", out)
+        return
+
+    # URL пуша с токеном (если задан) — не персистится в конфиге.
+    rc, url = _git(["remote", "get-url", remote])
+    push_url = url.strip()
+    token = cfg.github_token
+    if token and push_url.startswith("https://"):
+        push_url = push_url.replace("https://", f"https://{token}@", 1)
+
+    code, out = _git(["push", push_url, f"HEAD:{branch}"])
+    if code != 0:
+        # Удалёнка ушла вперёд — подтянуть и повторить.
+        log.warning("Публикация: push отклонён, делаю pull --rebase и повтор")
+        _git(["pull", "--rebase", "--autostash", remote, branch])
+        code, out = _git(["push", push_url, f"HEAD:{branch}"])
+    # Не логируем out (может содержать токен в URL при ошибке).
+    if code == 0:
+        log.info("Публикация ['%s']: снапшот запушен в %s/%s — Pages обновится",
+                 cfg.pipeline.name, remote, branch)
+    else:
+        log.error("Публикация ['%s']: push не удался (код %d)", cfg.pipeline.name, code)
 
 
 def main() -> None:

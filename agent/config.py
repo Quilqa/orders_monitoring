@@ -77,6 +77,7 @@ class Pipeline:
     retries: dict
     driver: str | None = None        # имя источника-драйвера для combine: duckdb_join
     assemble_file: str | None = None  # DuckDB-SQL сборки для combine: duckdb_join
+    publish: dict = field(default_factory=dict)  # {mode: none|git, git_branch, git_remote}
 
 
 @dataclass
@@ -84,6 +85,7 @@ class Config:
     impala: ImpalaConfig
     postgres: PostgresConfig
     pipeline: Pipeline
+    github_token: str = ""           # для публикации (git push); из .env, не коммитится
     queries_dir: Path = field(default=AGENT_DIR / "queries")
 
     @property
@@ -150,6 +152,8 @@ def load_config(pipeline: str = "historical") -> Config:
         retries=raw.get("retries", {"attempts": 3, "backoff_seconds": 30}),
         driver=raw.get("driver"),
         assemble_file=raw.get("assemble_file"),
+        publish=raw.get("publish", {}),
     )
 
-    return Config(impala=impala, postgres=postgres, pipeline=pipeline_obj)
+    return Config(impala=impala, postgres=postgres, pipeline=pipeline_obj,
+                  github_token=_env("GITHUB_TOKEN"))

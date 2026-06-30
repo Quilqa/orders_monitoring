@@ -37,4 +37,6 @@ retries:
   backoff_seconds: 30
 
 publish:
-  mode: none
+  mode: git                 # после сборки: git commit+push -> Pages пересоберётся
+  git_remote: origin
+  git_branch: main
