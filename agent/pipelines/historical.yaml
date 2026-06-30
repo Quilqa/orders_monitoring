@@ -34,6 +34,9 @@ validation:
 # crm_customer) в data/historical/sources/ — доступны в SQL-вкладке браузера.
 export_sources: true
 
+# Шифровать parquet (AES-GCM ключом DATA_KEY из .env).
+encrypt: true
+
 # Раз в сутки, 05:00 по Алматы.
 schedule:
   mode: cron

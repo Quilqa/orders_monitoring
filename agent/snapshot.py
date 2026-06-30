@@ -19,14 +19,31 @@ def _atomic_replace(tmp: Path, dst: Path) -> None:
     os.replace(tmp, dst)  # atomic на одной ФС
 
 
+def _write_parquet(df: pd.DataFrame, dst: Path, dek: bytes | None) -> None:
+    """Записать df в parquet атомарно; при dek — зашифровать AES-GCM."""
+    import io
+
+    buf = io.BytesIO()
+    df.to_parquet(buf, index=False, engine="pyarrow", compression="zstd")
+    data = buf.getvalue()
+    if dek:
+        from crypto_util import encrypt_bytes
+        data = encrypt_bytes(data, dek)
+    tmp = dst.with_suffix(dst.suffix + ".tmp")
+    tmp.write_bytes(data)
+    _atomic_replace(tmp, dst)
+
+
 def write_snapshot(df: pd.DataFrame, data_dir: Path, *,
                    status: str = "ok", error: str | None = None,
                    source_versions: dict | None = None,
-                   source_tables: dict | None = None) -> dict:
+                   source_tables: dict | None = None,
+                   dek: bytes | None = None) -> dict:
     """Записать parquet + meta.json атомарно. Возвращает meta-словарь.
 
     source_tables: {имя: DataFrame} — исходные таблицы; сохраняются в
     data_dir/sources/<имя>.parquet и перечисляются в meta для загрузки в браузере.
+    dek: ключ AES-GCM — если задан, все parquet шифруются (meta.encrypted=true).
     """
     data_dir.mkdir(parents=True, exist_ok=True)
 
@@ -34,9 +51,7 @@ def write_snapshot(df: pd.DataFrame, data_dir: Path, *,
     meta_path = data_dir / "meta.json"
 
     if status == "ok":
-        tmp_parquet = parquet_path.with_suffix(".parquet.tmp")
-        df.to_parquet(tmp_parquet, index=False, engine="pyarrow", compression="zstd")
-        _atomic_replace(tmp_parquet, parquet_path)
+        _write_parquet(df, parquet_path, dek)
 
     written_sources = []
     if status == "ok" and source_tables:
@@ -44,10 +59,7 @@ def write_snapshot(df: pd.DataFrame, data_dir: Path, *,
         src_dir.mkdir(parents=True, exist_ok=True)
         for name, sdf in source_tables.items():
             try:
-                dst = src_dir / f"{name}.parquet"
-                tmp = dst.with_suffix(".parquet.tmp")
-                sdf.to_parquet(tmp, index=False, engine="pyarrow", compression="zstd")
-                _atomic_replace(tmp, dst)
+                _write_parquet(sdf, src_dir / f"{name}.parquet", dek)
                 written_sources.append({"name": name, "row_count": int(len(sdf))})
             except Exception as e:  # noqa: BLE001
                 log.warning("Источник '%s' не сохранён в parquet: %s", name, e)
@@ -59,6 +71,7 @@ def write_snapshot(df: pd.DataFrame, data_dir: Path, *,
         "source_versions": source_versions or {},
         "source_tables": [s["name"] for s in written_sources],
         "source_tables_info": written_sources,
+        "encrypted": bool(dek),
         "status": status,
     }
     if error:

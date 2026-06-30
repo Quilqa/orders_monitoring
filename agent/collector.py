@@ -215,11 +215,19 @@ def run(pipeline: str = "historical", sample: bool = False, publish: bool = Fals
             df, sources = collect(cfg)
         df = normalize(df)
         validate(cfg, df)
+        dek = None
+        if cfg.pipeline.encrypt:
+            if not cfg.data_key_b64:
+                raise ValidationError("encrypt: true, но DATA_KEY не задан в .env "
+                                      "(сгенерируй: python setup_encryption.py)")
+            import base64
+            dek = base64.b64decode(cfg.data_key_b64)
         meta = write_snapshot(
             df, data_dir,
             source_versions={"pipeline": pipeline, "impala": cfg.impala.database,
                              "mode": "sample" if sample else "live"},
             source_tables=(sources if cfg.pipeline.export_sources else None),
+            dek=dek,
         )
         log.info("Готово ['%s']: %d строк -> %s", pipeline, meta["row_count"], data_dir)
         if publish or cfg.pipeline.publish.get("mode", "none") != "none":

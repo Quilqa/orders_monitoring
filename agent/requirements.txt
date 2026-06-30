@@ -11,6 +11,7 @@ psycopg[binary]>=3.1
 pandas>=2.0
 pyarrow>=14.0            # запись parquet
 duckdb>=0.10            # межбазовая сборка join (combine: duckdb_join)
+cryptography>=42.0      # AES-GCM шифрование снапшота (encrypt: true)
 
 # Конфиг и расписание
 pyyaml>=6.0

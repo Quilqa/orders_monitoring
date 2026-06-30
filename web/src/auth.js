@@ -1,20 +1,15 @@
-// Простой парольный вход. Роль определяется тем, какой пароль совпал.
-// ВНИМАНИЕ (раздел 8 PRD): это защищает только UI. На публичном хостинге
-// сам snapshot.parquet доступен по прямому URL. Для реальной защиты данных —
-// Cloudflare Access / шифрование снапшота / приватный хостинг.
+// Парольный вход с расшифровкой снапшота (envelope encryption).
+// Пароль -> PBKDF2 -> KEK -> разворачивает DEK (из config.json auth.roles[].wrap).
+// Успешное разворачивание = верный пароль И ключ для расшифровки parquet.
+// Без пароля публичные файлы зашифрованы и бесполезны (см. crypto.js / agent).
+
+import { unwrapDEK } from "./crypto.js";
 
 const SESSION_KEY = "metrics_role";
 
-async function sha256(text) {
-  const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));
-  return [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, "0")).join("");
-}
-
-export async function checkPassword(password, auth) {
-  const hash = await sha256(password);
-  if (hash === auth.adminHash) return "admin";
-  if (hash === auth.viewerHash) return "viewer";
-  return null;
+// Возвращает { role, dek } или null.
+export async function login(password, auth) {
+  return unwrapDEK(password, auth);
 }
 
 export function saveRole(role) {

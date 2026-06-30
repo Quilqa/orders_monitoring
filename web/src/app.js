@@ -1,6 +1,6 @@
 // Точка входа: вход по паролю → выбор датасета → загрузка снапшота → вкладки.
-import { loadSnapshot } from "./db.js";
-import { checkPassword, saveRole, currentRole, logout } from "./auth.js";
+import { loadSnapshot, setDecryptionKey } from "./db.js";
+import { login, saveRole, currentRole, logout } from "./auth.js";
 import { fetchMeta, formatGeneratedAt, startAutoReload } from "./meta.js";
 import { initDashboard } from "./dashboard.js";
 import { initDetail } from "./detail.js";
@@ -11,7 +11,12 @@ let META = null;
 let dashboardConfig = null;
 let currentDatasetId = null;
 let stopReload = null;
+let currentDEK = null; // ключ расшифровки, полученный при входе
 const inited = { dashboard: false, detail: false, sql: false };
+
+function isEncrypted() {
+  return !!(CONFIG && CONFIG.auth && CONFIG.auth.roles);
+}
 
 async function loadConfig() {
   const resp = await fetch("config.json", { cache: "no-store" });
@@ -45,10 +50,11 @@ async function setupLogin() {
     e.preventDefault();
     errEl.hidden = true;
     const pw = document.getElementById("login-password").value;
-    const role = await checkPassword(pw, CONFIG.auth);
-    if (!role) { errEl.hidden = false; return; }
-    saveRole(role);
-    await enterApp(role);
+    const res = await login(pw, CONFIG.auth);
+    if (!res) { errEl.hidden = false; return; }
+    saveRole(res.role);
+    currentDEK = res.dek;
+    await enterApp(res.role);
   });
 }
 
@@ -81,6 +87,7 @@ async function loadDataset() {
   showBoot("Загрузка снапшота…");
   try {
     META = await fetchMeta(dataUrl("meta.json"));
+    setDecryptionKey(META.encrypted ? currentDEK : null);
     if (META.status === "ok" || META.status === "stale") {
       await loadSnapshot(currentDir(), META);
     }
@@ -179,6 +186,7 @@ function hideBoot() { document.getElementById("boot-overlay").hidden = true; }
   CONFIG = await loadConfig();
   await setupLogin();
   const role = currentRole();
-  if (role) await enterApp(role);
+  // При шифровании авто-вход невозможен: нужен пароль для вывода ключа расшифровки.
+  if (role && !isEncrypted()) await enterApp(role);
   else showLogin();
 })();

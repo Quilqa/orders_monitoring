@@ -31,6 +31,10 @@ validation:
 # в data/today/sources/ — доступны в SQL-вкладке браузера.
 export_sources: true
 
+# Шифровать parquet (AES-GCM ключом DATA_KEY из .env). Браузер расшифровывает
+# после ввода пароля. Сгенерировать ключ/пароли: python setup_encryption.py
+encrypt: true
+
 # Каждый час.
 schedule:
   mode: interval

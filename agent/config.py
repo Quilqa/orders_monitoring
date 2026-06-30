@@ -79,6 +79,7 @@ class Pipeline:
     assemble_file: str | None = None  # DuckDB-SQL сборки для combine: duckdb_join
     publish: dict = field(default_factory=dict)  # {mode: none|git, git_branch, git_remote}
     export_sources: bool = False     # сохранять исходные таблицы в data/<subdir>/sources/
+    encrypt: bool = False            # шифровать parquet (AES-GCM ключом DATA_KEY из .env)
 
 
 @dataclass
@@ -87,6 +88,7 @@ class Config:
     postgres: PostgresConfig
     pipeline: Pipeline
     github_token: str = ""           # для публикации (git push); из .env, не коммитится
+    data_key_b64: str = ""           # base64 DEK для шифрования снапшота; из .env
     queries_dir: Path = field(default=AGENT_DIR / "queries")
 
     @property
@@ -155,7 +157,8 @@ def load_config(pipeline: str = "historical") -> Config:
         assemble_file=raw.get("assemble_file"),
         publish=raw.get("publish", {}),
         export_sources=raw.get("export_sources", False),
+        encrypt=raw.get("encrypt", False),
     )
 
     return Config(impala=impala, postgres=postgres, pipeline=pipeline_obj,
-                  github_token=_env("GITHUB_TOKEN"))
+                  github_token=_env("GITHUB_TOKEN"), data_key_b64=_env("DATA_KEY"))

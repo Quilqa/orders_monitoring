@@ -1,8 +1,15 @@
 // DuckDB-WASM: загрузка снапшота Parquet и выполнение SQL прямо в браузере.
 import * as duckdb from "https://cdn.jsdelivr.net/npm/@duckdb/duckdb-wasm@1.28.0/+esm";
+import { decryptBytes } from "./crypto.js";
 
 let _db = null;
 let _conn = null;
+let _dek = null; // ключ дешифрования (CryptoKey) — задаётся при входе, если данные зашифрованы
+
+// Установить ключ расшифровки (после успешного входа). null = данные не зашифрованы.
+export function setDecryptionKey(dek) {
+  _dek = dek;
+}
 
 export async function initDuckDB() {
   if (_conn) return _conn;
@@ -26,7 +33,8 @@ let _views = new Set(); // созданные представления
 async function registerParquet(conn, url, vname, table) {
   const resp = await fetch(url, { cache: "no-store" });
   if (!resp.ok) throw new Error(`Не удалось загрузить ${url}: ${resp.status}`);
-  const buf = new Uint8Array(await resp.arrayBuffer());
+  let buf = new Uint8Array(await resp.arrayBuffer());
+  if (_dek) buf = await decryptBytes(_dek, buf); // расшифровать в памяти
   await _db.registerFileBuffer(vname, buf);
   _files.add(vname);
   await conn.query(`CREATE OR REPLACE VIEW "${table}" AS SELECT * FROM parquet_scan('${vname}')`);
