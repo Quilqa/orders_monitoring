@@ -1,6 +1,6 @@
 // Точка входа: вход по паролю → выбор датасета → загрузка снапшота → вкладки.
 import { loadSnapshot, setDecryptionKey } from "./db.js";
-import { login, saveRole, currentRole, logout } from "./auth.js";
+import { login, restoreSession, logout } from "./auth.js";
 import { fetchMeta, formatGeneratedAt, startAutoReload } from "./meta.js";
 import { initDashboard } from "./dashboard.js";
 import { initDetail } from "./detail.js";
@@ -17,10 +17,6 @@ let currentDEK = null; // ключ расшифровки, полученный 
 let activeCustomId = null; // id открытого кастомного листа
 let sqlPreset = null; // запрос для правки, передаётся в SQL-вкладку
 const inited = { dashboard: false, detail: false, sql: false };
-
-function isEncrypted() {
-  return !!(CONFIG && CONFIG.auth && CONFIG.auth.roles);
-}
 
 async function loadConfig() {
   const resp = await fetch("config.json", { cache: "no-store" });
@@ -56,7 +52,6 @@ async function setupLogin() {
     const pw = document.getElementById("login-password").value;
     const res = await login(pw, CONFIG.auth);
     if (!res) { errEl.hidden = false; return; }
-    saveRole(res.role);
     currentDEK = res.dek;
     await enterApp(res.role);
   });
@@ -102,9 +97,13 @@ async function loadDataset() {
     }
   } catch (e) {
     hideBoot();
+    // Возможно устарел ключ (сменили пароль/ключ) — предложим войти заново.
+    const decryptErr = e && (e.name === "OperationError" || /decrypt|operation/i.test(e.message || ""));
     document.getElementById("content").innerHTML =
       `<div class="panel"><div class="empty">Не удалось загрузить данные: ${e.message}<br/><br/>
-       Проверьте, что снапшот собран и файлы доступны в <code>${currentDir()}</code>.</div></div>`;
+       ${decryptErr ? "Возможно, изменился ключ шифрования — " : "Проверьте, что снапшот собран и доступен. "}
+       <button class="btn" id="relogin">Войти заново</button></div></div>`;
+    document.getElementById("relogin")?.addEventListener("click", () => { logout(); location.reload(); });
     return;
   }
 
@@ -244,8 +243,8 @@ function hideBoot() { document.getElementById("boot-overlay").hidden = true; }
 (async function main() {
   CONFIG = await loadConfig();
   await setupLogin();
-  const role = currentRole();
-  // При шифровании авто-вход невозможен: нужен пароль для вывода ключа расшифровки.
-  if (role && !isEncrypted()) await enterApp(role);
+  // Восстановить сессию (12ч), если есть — иначе просим пароль.
+  const restored = await restoreSession();
+  if (restored) { currentDEK = restored.dek; await enterApp(restored.role); }
   else showLogin();
 })();
