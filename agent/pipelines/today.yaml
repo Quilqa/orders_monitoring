@@ -1,6 +1,7 @@
-# Пайплайн TODAY — только текущий день, лёгкий, ежечасно (live-мониторинг).
-# customer_orders за сегодня (Postgre) JOIN crm2.crm2_crm_cust_order_day + справочники (Impala).
+# Пайплайн TODAY — последние 2 дня (вчера+сегодня), лёгкий, ежечасно (live-мониторинг).
+# customer_orders за 2 дня (Postgre) JOIN crm2.crm2_crm_cust_order_day + справочники (Impala).
 # Не сканирует всю историю — берёт маленькую day-таблицу и словари.
+# Дедуп day по update_date: заказ, закрывшийся сегодня, показывается в свежем состоянии.
 
 output_subdir: today                  # data/today/snapshot.parquet + meta.json
 output_dataset: snapshot
