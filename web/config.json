@@ -1,0 +1,32 @@
+{
+  "title": "Мониторинг заказов",
+  "defaultDataset": "today",
+  "datasets": [
+    {
+      "id": "today",
+      "label": "Последние 2 дня (ежечасно)",
+      "dir": "../data/today"
+    },
+    {
+      "id": "historical",
+      "label": "Исторические (за всё время)",
+      "dir": "../data/historical"
+    }
+  ],
+  "auth": {
+    "_comment": "Envelope encryption: пароль -> PBKDF2 -> KEK -> разворачивает DEK (wrap) -> расшифровка parquet. salt публичен; файлы бесполезны без пароля.",
+    "scheme": "aesgcm-pbkdf2",
+    "salt": "Asl946nLGCYCxRE7xYcwQg==",
+    "iterations": 200000,
+    "roles": [
+      {
+        "role": "admin",
+        "wrap": "AcMKk9tWuTG5vHcX6OcOazN08UgcLZIpG3kt1cveBULb6/fghzs7dLNnGaUW4lSRi1WJy1UVCwwKPMOg"
+      },
+      {
+        "role": "viewer",
+        "wrap": "8hKa794GyKgottGu4em4hLdJr6NY+cXsRWq4QYbqS36tteUwPy+mQrO3WVv9wS6MaBm/lCtu5xxyAxVP"
+      }
+    ]
+  }
+}

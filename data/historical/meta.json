@@ -1,0 +1,133 @@
+{
+  "generated_at": "2026-07-02T05:00:19.372755+05:00",
+  "row_count": 86,
+  "columns": [
+    {
+      "name": "report_period_id",
+      "type": "int32"
+    },
+    {
+      "name": "entry_date",
+      "type": "string"
+    },
+    {
+      "name": "id",
+      "type": "int64"
+    },
+    {
+      "name": "customer_id",
+      "type": "int64"
+    },
+    {
+      "name": "crm_order_id",
+      "type": "int64"
+    },
+    {
+      "name": "status",
+      "type": "object"
+    },
+    {
+      "name": "created_at",
+      "type": "object"
+    },
+    {
+      "name": "name",
+      "type": "object"
+    },
+    {
+      "name": "identification_number",
+      "type": "object"
+    },
+    {
+      "name": "mobile_phone",
+      "type": "object"
+    },
+    {
+      "name": "type_name",
+      "type": "object"
+    },
+    {
+      "name": "status_name",
+      "type": "object"
+    },
+    {
+      "name": "sales_channel_name",
+      "type": "object"
+    },
+    {
+      "name": "order_date_create",
+      "type": "object"
+    },
+    {
+      "name": "order_close_date",
+      "type": "object"
+    },
+    {
+      "name": "username_created_order",
+      "type": "object"
+    },
+    {
+      "name": "reject_reason_name",
+      "type": "object"
+    },
+    {
+      "name": "new_product_offer_id",
+      "type": "Int64"
+    },
+    {
+      "name": "new_product_offer_name",
+      "type": "object"
+    },
+    {
+      "name": "cust_order_id",
+      "type": "Int64"
+    },
+    {
+      "name": "customer_account_id",
+      "type": "Int64"
+    },
+    {
+      "name": "comments",
+      "type": "object"
+    },
+    {
+      "name": "comment_on_close",
+      "type": "object"
+    },
+    {
+      "name": "recreated_order",
+      "type": "int32"
+    }
+  ],
+  "source_versions": {
+    "pipeline": "historical",
+    "impala": "drb",
+    "mode": "live"
+  },
+  "source_tables": [
+    "customer_orders",
+    "cust_order_full",
+    "crm_cust_order_ids",
+    "crm_customer"
+  ],
+  "source_tables_info": [
+    {
+      "name": "customer_orders",
+      "row_count": 3999
+    },
+    {
+      "name": "cust_order_full",
+      "row_count": 24743
+    },
+    {
+      "name": "crm_cust_order_ids",
+      "row_count": 3913
+    },
+    {
+      "name": "crm_customer",
+      "row_count": 3655
+    }
+  ],
+  "encrypted": true,
+  "status": "ok"
+}
