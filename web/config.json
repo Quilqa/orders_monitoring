@@ -11,6 +11,12 @@
       "id": "historical",
       "label": "Исторические (за всё время)",
       "dir": "../data/historical"
+    },
+    {
+      "id": "summer",
+      "label": "Летняя промоакция",
+      "dir": "../data/summer",
+      "dashboard": "dashboard_summer.json"
     }
   ],
   "auth": {

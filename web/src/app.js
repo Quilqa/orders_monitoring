@@ -11,6 +11,7 @@ import { escapeHtml } from "./util.js";
 let CONFIG = null;
 let META = null;
 let dashboardConfig = null;
+const dashboardCache = {}; // {файл: конфиг} — дашборд может отличаться по датасету
 let currentDatasetId = null;
 let stopReload = null;
 let currentDEK = null; // ключ расшифровки, полученный при входе
@@ -92,9 +93,14 @@ async function loadDataset() {
     if (META.status === "ok" || META.status === "stale") {
       await loadSnapshot(currentDir(), META);
     }
-    if (!dashboardConfig) {
-      dashboardConfig = await (await fetch("dashboard.json", { cache: "no-store" })).json();
+    // Дашборд-конфиг может отличаться по датасету (dataset.dashboard в config.json).
+    const list = datasetList();
+    const dashFile =
+      (list.find((d) => d.id === currentDatasetId) || {}).dashboard || "dashboard.json";
+    if (!dashboardCache[dashFile]) {
+      dashboardCache[dashFile] = await (await fetch(dashFile, { cache: "no-store" })).json();
     }
+    dashboardConfig = dashboardCache[dashFile];
   } catch (e) {
     hideBoot();
     // Возможно устарел ключ (сменили пароль/ключ) — предложим войти заново.

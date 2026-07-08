@@ -53,10 +53,13 @@ def _run_source(cfg: Config, src, sql: str) -> pd.DataFrame:
         import db_impala
         return db_impala.run_query(cfg.impala, sql)
     if src.type == "postgres":
-        if not cfg.postgres.configured:
-            raise ValidationError("Postgre не сконфигурирован (нет PG_* в .env)")
+        from config import pg_from_env
+        pg_cfg = pg_from_env(src.env_prefix) if src.env_prefix else cfg.postgres
+        if not pg_cfg.configured:
+            prefix = src.env_prefix or "PG"
+            raise ValidationError(f"Postgre не сконфигурирован (нет {prefix}_* в .env)")
         import db_postgres
-        return db_postgres.run_query(cfg.postgres, sql)
+        return db_postgres.run_query(pg_cfg, sql)
     raise ValidationError(f"Неизвестный тип источника: {src.type}")
 
 
@@ -115,6 +118,43 @@ def _substitute(sql: str, driver_df: pd.DataFrame) -> str:
     return re.sub(r"\{\{(\w+)__(ids|min|max)\}\}", repl, sql)
 
 
+# Impala отклоняет выражения с >10000 детьми — IN-список режем на батчи.
+_IDS_CHUNK = 5000
+
+
+def _run_with_pushdown(cfg: Config, src, sql_template: str, driver_df: pd.DataFrame) -> pd.DataFrame:
+    """Выполнить источник с подстановкой плейсхолдеров. Если {{col__ids}} даёт
+    больше _IDS_CHUNK значений — выполняем запрос батчами и склеиваем."""
+    import re
+
+    ids_cols = re.findall(r"\{\{(\w+)__ids\}\}", sql_template)
+    big_col = None
+    for col in ids_cols:
+        if col in driver_df.columns and driver_df[col].dropna().nunique() > _IDS_CHUNK:
+            big_col = col
+            break
+
+    if big_col is None:
+        return _run_source(cfg, src, _substitute(sql_template, driver_df))
+
+    # Остальные плейсхолдеры (__min/__max, маленькие __ids) — из ПОЛНОГО драйвера;
+    # большой __ids временно прячем, чтобы подставлять его по-батчево.
+    token = f"{{{{{big_col}__ids}}}}"
+    sentinel = "\x00BIG_IDS\x00"
+    pre = _substitute(sql_template.replace(token, sentinel), driver_df)
+
+    values = driver_df[big_col].dropna().unique()
+    n_batches = (len(values) + _IDS_CHUNK - 1) // _IDS_CHUNK
+    frames = []
+    for i in range(0, len(values), _IDS_CHUNK):
+        chunk = _sql_literal_list(pd.Series(values[i:i + _IDS_CHUNK]))
+        log.info("Источник '%s': батч %d/%d (%d значений %s)",
+                 src.name, i // _IDS_CHUNK + 1, n_batches,
+                 min(_IDS_CHUNK, len(values) - i), big_col)
+        frames.append(_run_source(cfg, src, pre.replace(sentinel, chunk)))
+    return pd.concat(frames, ignore_index=True)
+
+
 def _collect_duckdb_join(cfg: Config) -> tuple[pd.DataFrame, dict[str, pd.DataFrame]]:
     import duckdb
 
@@ -138,9 +178,8 @@ def _collect_duckdb_join(cfg: Config) -> tuple[pd.DataFrame, dict[str, pd.DataFr
     for src in cfg.pipeline.sources:
         if src.name == driver_name:
             continue
-        sql = _substitute(_read_query(cfg, src.query_file), driver_df)
         log.info("Источник '%s' (%s): выполняю %s", src.name, src.type, src.query_file)
-        tables[src.name] = _run_source(cfg, src, sql)
+        tables[src.name] = _run_with_pushdown(cfg, src, _read_query(cfg, src.query_file), driver_df)
         log.info("Источник '%s': %d строк", src.name, len(tables[src.name]))
 
     # 3) Финальная сборка join в DuckDB.

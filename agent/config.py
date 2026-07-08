@@ -61,6 +61,7 @@ class Source:
     name: str
     type: str           # "impala" | "postgres"
     query_file: str
+    env_prefix: str | None = None  # postgres: другой набор env-ключей (<PREFIX>_HOST…)
 
 
 @dataclass
@@ -98,6 +99,19 @@ class Config:
 
 def _env(key: str, default: str = "") -> str:
     return os.environ.get(key, default)
+
+
+def pg_from_env(prefix: str = "PG") -> PostgresConfig:
+    """PostgresConfig из env-ключей <prefix>_HOST/_PORT/_DBNAME/_USER/_PASSWORD/_SSLMODE.
+    Позволяет источникам ходить в разные Postgres-базы (source.env_prefix)."""
+    return PostgresConfig(
+        host=_env(f"{prefix}_HOST"),
+        port=int(_env(f"{prefix}_PORT", "5432")),
+        dbname=_env(f"{prefix}_DBNAME"),
+        user=_env(f"{prefix}_USER"),
+        password=_env(f"{prefix}_PASSWORD"),
+        sslmode=_env(f"{prefix}_SSLMODE", "prefer"),
+    )
 
 
 def list_pipelines() -> list[str]:
@@ -138,7 +152,8 @@ def load_config(pipeline: str = "historical") -> Config:
         raw = yaml.safe_load(f)
 
     sources = [
-        Source(name=s["name"], type=s["type"], query_file=s["query_file"])
+        Source(name=s["name"], type=s["type"], query_file=s["query_file"],
+               env_prefix=s.get("env_prefix"))
         for s in raw["sources"]
     ]
 
