@@ -280,9 +280,15 @@ def run(pipeline: str = "historical", sample: bool = False, publish: bool = Fals
 
 def _git(args: list[str], env: dict | None = None) -> tuple[int, str]:
     import subprocess
+    import sys
     from config import REPO_DIR
+    # CREATE_NO_WINDOW: без этого флага каждый git-вызов, запущенный из процесса без
+    # консоли (pythonw.exe в автозагрузке), открывает своё окно консоли — «мигающие»
+    # CMD-попапы при публикации. Флаг только для Windows.
+    flags = 0x08000000 if sys.platform == "win32" else 0
     p = subprocess.run(["git", "-C", str(REPO_DIR)] + args,
-                       capture_output=True, text=True, env=env)
+                       capture_output=True, text=True, env=env,
+                       creationflags=flags)
     return p.returncode, p.stdout.strip()
 
 
