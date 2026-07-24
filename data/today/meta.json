@@ -1,0 +1,128 @@
+{
+  "generated_at": "2026-07-24T13:00:12.813105+05:00",
+  "row_count": 15,
+  "columns": [
+    {
+      "name": "report_period_id",
+      "type": "int32"
+    },
+    {
+      "name": "entry_date",
+      "type": "string"
+    },
+    {
+      "name": "id",
+      "type": "int64"
+    },
+    {
+      "name": "customer_id",
+      "type": "int64"
+    },
+    {
+      "name": "crm_order_id",
+      "type": "int64"
+    },
+    {
+      "name": "status",
+      "type": "str"
+    },
+    {
+      "name": "created_at",
+      "type": "str"
+    },
+    {
+      "name": "name",
+      "type": "str"
+    },
+    {
+      "name": "identification_number",
+      "type": "str"
+    },
+    {
+      "name": "mobile_phone",
+      "type": "str"
+    },
+    {
+      "name": "type_name",
+      "type": "str"
+    },
+    {
+      "name": "status_name",
+      "type": "str"
+    },
+    {
+      "name": "sales_channel_name",
+      "type": "str"
+    },
+    {
+      "name": "order_date_create",
+      "type": "str"
+    },
+    {
+      "name": "order_close_date",
+      "type": "object"
+    },
+    {
+      "name": "username_created_order",
+      "type": "str"
+    },
+    {
+      "name": "reject_reason_name",
+      "type": "str"
+    },
+    {
+      "name": "new_product_offer_id",
+      "type": "Int64"
+    },
+    {
+      "name": "new_product_offer_name",
+      "type": "str"
+    },
+    {
+      "name": "cust_order_id",
+      "type": "Int64"
+    },
+    {
+      "name": "customer_account_id",
+      "type": "Int64"
+    },
+    {
+      "name": "comments",
+      "type": "str"
+    },
+    {
+      "name": "comment_on_close",
+      "type": "Int32"
+    },
+    {
+      "name": "recreated_order",
+      "type": "int32"
+    }
+  ],
+  "source_versions": {
+    "pipeline": "today",
+    "impala": "drb",
+    "mode": "live"
+  },
+  "source_tables": [
+    "customer_orders",
+    "cust_order_day_detail",
+    "crm_customer"
+  ],
+  "source_tables_info": [
+    {
+      "name": "customer_orders",
+      "row_count": 15
+    },
+    {
+      "name": "cust_order_day_detail",
+      "row_count": 8
+    },
+    {
+      "name": "crm_customer",
+      "row_count": 13
+    }
+  ],
+  "encrypted": true,
+  "status": "ok"
+}

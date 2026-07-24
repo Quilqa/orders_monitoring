@@ -1,0 +1,39 @@
+{
+  "_comment": "Лист 'Дашборд' для датасета summer (летняя промоакция: summer_promo_* ⋈ crm2/drb). Фильтры применяются ко всем виджетам.",
+  "filters": [
+    { "field": "eligibility_status", "label": "Статус участия" },
+    { "field": "promo_code", "label": "Промокод" },
+    { "field": "is_employee", "label": "Сотрудник" }
+  ],
+  "kpis": [
+    { "label": "Всего участий", "agg": "count", "field": "participation_number" },
+    { "label": "Уникальных клиентов", "agg": "count_distinct", "field": "customer_id" },
+    { "label": "Уникальных промокодов", "agg": "count_distinct", "field": "promo_code" },
+    { "label": "С услугами", "agg": "sum", "field": "has_services" }
+  ],
+  "widgets": [
+    {
+      "type": "line",
+      "title": "Участия по дням",
+      "x": "entry_date",
+      "y": "participation_number",
+      "agg": "count",
+      "full": true
+    },
+    {
+      "type": "bar",
+      "title": "По статусу участия",
+      "x": "eligibility_status",
+      "y": "id",
+      "agg": "count"
+    },
+    {
+      "type": "bar",
+      "title": "ТОП-10 промокодов",
+      "x": "promo_code",
+      "y": "participation_number",
+      "agg": "count",
+      "limit": 10
+    }
+  ]
+}

@@ -1,0 +1,97 @@
+{
+  "generated_at": "2026-07-24T12:13:56.506747+05:00",
+  "row_count": 161171,
+  "columns": [
+    {
+      "name": "report_period_id",
+      "type": "Int64"
+    },
+    {
+      "name": "entry_date",
+      "type": "Date"
+    },
+    {
+      "name": "id",
+      "type": "Int64"
+    },
+    {
+      "name": "customer_id",
+      "type": "Int64"
+    },
+    {
+      "name": "eligibility_status",
+      "type": "String"
+    },
+    {
+      "name": "is_employee",
+      "type": "Boolean"
+    },
+    {
+      "name": "is_participant",
+      "type": "Boolean"
+    },
+    {
+      "name": "checked_at",
+      "type": "String"
+    },
+    {
+      "name": "created_at",
+      "type": "String"
+    },
+    {
+      "name": "participation_number",
+      "type": "Int64"
+    },
+    {
+      "name": "promo_code",
+      "type": "String"
+    },
+    {
+      "name": "participation_date",
+      "type": "String"
+    },
+    {
+      "name": "name",
+      "type": "String"
+    },
+    {
+      "name": "identification_number",
+      "type": "String"
+    },
+    {
+      "name": "mobile_phone",
+      "type": "String"
+    },
+    {
+      "name": "is_check_mobile_phone",
+      "type": "Int64"
+    },
+    {
+      "name": "customer_create_date",
+      "type": "String"
+    },
+    {
+      "name": "has_services",
+      "type": "Int64"
+    }
+  ],
+  "source_versions": {
+    "pipeline": "dagster:summer_promo_snapshot"
+  },
+  "source_tables": [
+    "summer",
+    "customers"
+  ],
+  "source_tables_info": [
+    {
+      "name": "summer",
+      "row_count": 161171
+    },
+    {
+      "name": "customers",
+      "row_count": 161113
+    }
+  ],
+  "encrypted": true,
+  "status": "ok"
+}
